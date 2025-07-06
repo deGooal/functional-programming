@@ -1,1 +1,135 @@
+// FSharpCalculator калькулятор
+// Program.fs
+module CalculatorLogic = // Используем модуль для организации кода
+
+    // Базовые операции
+    let add (x: float) (y: float) : float = x + y
+    let subtract (x: float) (y: float) : float = x - y
+    let multiply (x: float) (y: float) : float = x * y
+
+    // Деление с обработкой деления на ноль через Option тип
+    // Option тип - это хороший способ в ФП обрабатывать ситуации, когда значение может отсутствовать
+    let divide (x: float) (y: float) : float option =
+        if y = 0.0 then
+            None // Нет результата, если деление на ноль
+        else
+            Some (x / y) // Есть результат, "обернутый" в Some
+
+    // Возведение в степень
+    // Используем стандартную функцию System.Math.Pow
+    let power (baseValue: float) (exponent: float) : float = 
+        System.Math.Pow(baseValue, exponent) 
+
+    // Вычисление квадратного корня
+    // Используем System.Math.Sqrt
+    let squareRoot (x: float) : float option =
+        if x < 0.0 then
+            None // Корень из отрицательного числа не определен (в действительных числах)
+        else
+            Some (System.Math.Sqrt(x))
+
+    // Тригонометрические функции (угол в радианах)
+    // Используют System.Math
+    let sine (angleRadians: float) : float = System.Math.Sin(angleRadians)
+    let cosine (angleRadians: float) : float = System.Math.Cos(angleRadians)
+    let tangent (angleRadians: float) : float = System.Math.Tan(angleRadians)
+
+// ================================
+
+module UserInterface =
+
+    // Функция для запроса числа у пользователя
+    let rec getFloatInput (prompt: string) : float =
+        printf "%s" prompt // printf не добавляет новую строку, printfn - добавляет
+        let input = System.Console.ReadLine()
+        match System.Double.TryParse(input) with // TryParse возвращает (bool, float)
+        | true, value -> value
+        | false, _ ->
+            printfn "Неверный ввод. Пожалуйста, введите число."
+            getFloatInput prompt // Рекурсивный вызов для повторного ввода
+
+    // Функция для отображения результата Option<float>
+    let printOptionResult (operationName: string) (result: float option) =
+        match result with
+        | Some value -> printfn "%s: %f" operationName value
+        | None -> printfn "%s: Операция не может быть выполнена (например, деление на ноль или корень из отрицательного числа)." operationName 
+
+    // Функция для отображения результата float
+    let printFloatResult (operationName: string) (value: float) =
+        printfn "%s: %f" operationName value
+
+// ================================
+
+
+// Тип для операций: принимает два числа, возвращает одно
+type BinaryOperation = float -> float -> float
+// Тип для операций: принимает одно число, возвращает одно
+type UnaryOperation = float -> float
+
+// Используем функции высшего порядка, передавая операцию как аргумент
+let performBinaryOperation (opName: string) (operation: BinaryOperation) =
+    let num1 = UserInterface.getFloatInput "Введите первое число: "
+    let num2 = UserInterface.getFloatInput "Введите второе число: "
+    let result = operation num1 num2
+    UserInterface.printFloatResult opName result
+
+// Специальная обработка для деления, т.к. оно возвращает Option
+let performDivision () =
+    let num1 = UserInterface.getFloatInput "Введите делимое: "
+    let num2 = UserInterface.getFloatInput "Введите делитель: "
+    let result = CalculatorLogic.divide num1 num2
+    UserInterface.printOptionResult "Результат деления" result
+
+let performUnaryOperation (opName: string) (operation: UnaryOperation) =
+    let num = UserInterface.getFloatInput "Введите число: "
+    let result = operation num
+    UserInterface.printFloatResult opName result
+
+// Специальная обработка для корня, т.к. он возвращает Option
+let performSquareRoot () =
+    let num = UserInterface.getFloatInput "Введите число для извлечения корня: "
+    let result = CalculatorLogic.squareRoot num
+    UserInterface.printOptionResult "Квадратный корень" result
+
+
+// Главный цикл приложения
+let rec mainLoop () =
+    printfn "\n--- Калькулятор F# ---"
+    printfn "Выберите операцию:"
+    printfn "1. Сложение (+)"
+    printfn "2. Вычитание (-)"
+    printfn "3. Умножение (*)"
+    printfn "4. Деление (/)"
+    printfn "5. Возведение в степень (x^y)"
+    printfn "6. Квадратный корень (sqrt)"
+    printfn "7. Синус (sin)"
+    printfn "8. Косинус (cos)"
+    printfn "9. Тангенс (tan)"
+    printfn "0. Выход"
+    printf "Ваш выбор: "
+
+    let choice = System.Console.ReadLine()
+
+    match choice with
+    | "1" -> performBinaryOperation "Сумма" CalculatorLogic.add
+    | "2" -> performBinaryOperation "Разность" CalculatorLogic.subtract
+    | "3" -> performBinaryOperation "Произведение" CalculatorLogic.multiply
+    | "4" -> performDivision () // Специальный обработчик
+    | "5" -> performBinaryOperation "Степень" CalculatorLogic.power
+    | "6" -> performSquareRoot () // Специальный обработчик
+    | "7" -> performUnaryOperation "Синус" CalculatorLogic.sine
+    | "8" -> performUnaryOperation "Косинус" CalculatorLogic.cosine
+    | "9" -> performUnaryOperation "Тангенс" CalculatorLogic.tangent
+    | "0" -> printfn "Выход из калькулятора."
+    | _ -> printfn "Неверный выбор. Попробуйте снова."
+
+    if choice <> "0" then // Если не выбран выход, продолжаем цикл
+        mainLoop()
+
+
+// Точка входа в программу
+[<EntryPoint>]
+let main argv =
+    mainLoop() // Запускаем главный цикл
+    0 // Возвращаем 0, что означает успешное завершение
 
